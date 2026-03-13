@@ -1,0 +1,1230 @@
+<file path="TekTomato/Resources/Themes/Common.xaml">
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    
+    <!-- Font Definitions -->
+    <FontFamily x:Key="MainFont">Segoe UI</FontFamily>
+    
+    <!-- Text Styles -->
+    <Style x:Key="LargeTimerText" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="52"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{StaticResource PrimaryForeground}"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <Style x:Key="SmallLabelText" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{StaticResource SecondaryForeground}"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="VerticalAlignment" Value="Top"/>
+    </Style>
+
+    <Style x:Key="ButtonText" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{StaticResource PrimaryForeground}"/>
+        <Setter Property="Margin" Value="0"/>
+    </Style>
+
+    <!-- Button Styles -->
+    <Style x:Key="PrimaryButtonStyle" TargetType="Button">
+        <Setter Property="Background" Value="{StaticResource ButtonBackground}"/>
+        <Setter Property="Foreground" Value="{StaticResource PrimaryForeground}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="20,10"/>
+        <Setter Property="Margin" Value="5"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="border" 
+                            Background="{TemplateBinding Background}" 
+                            CornerRadius="8"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="border" Property="Background" Value="{StaticResource ButtonHover}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="border" Property="Background" Value="{StaticResource AccentGreen}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="ActionButtonStyle" TargetType="Button">
+        <Setter Property="Background" Value="{StaticResource ButtonBackground}"/>
+        <Setter Property="Foreground" Value="{StaticResource PrimaryForeground}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="15,8"/>
+        <Setter Property="Margin" Value="3"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="border" 
+                            Background="{TemplateBinding Background}" 
+                            CornerRadius="6"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="border" Property="Background" Value="{StaticResource ButtonHover}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="border" Property="Opacity" Value="0.5"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="IconButtonStyle" TargetType="Button">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{StaticResource PrimaryForeground}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="8"/>
+        <Setter Property="Width" Value="32"/>
+        <Setter Property="Height" Value="32"/>
+        <Setter Property="FontSize" Value="16"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="border" 
+                            Background="Transparent" 
+                            CornerRadius="4">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="border" Property="Background" Value="{StaticResource ButtonHover}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Input Styles -->
+    <Style x:Key="ComboBoxStyle" TargetType="ComboBox">
+        <Setter Property="Background" Value="{StaticResource ButtonBackground}"/>
+        <Setter Property="Foreground" Value="{StaticResource PrimaryForeground}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="10,5"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Margin" Value="5"/>
+    </Style>
+
+    <Style x:Key="TextBoxStyle" TargetType="TextBox">
+        <Setter Property="Background" Value="{StaticResource ButtonBackground}"/>
+        <Setter Property="Foreground" Value="{StaticResource PrimaryForeground}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="10,5"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Margin" Value="5"/>
+    </Style>
+
+    <Style x:Key="SliderStyle" TargetType="Slider">
+        <Setter Property="Background" Value="{StaticResource SecondaryBackground}"/>
+        <Setter Property="Foreground" Value="{StaticResource AccentGreen}"/>
+        <Setter Property="Height" Value="30"/>
+        <Setter Property="Margin" Value="5,10"/>
+    </Style>
+
+    <Style x:Key="RadioButtonStyle" TargetType="RadioButton">
+        <Setter Property="Foreground" Value="{StaticResource PrimaryForeground}"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Margin" Value="5,2"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <Style x:Key="GroupBoxStyle" TargetType="GroupBox">
+        <Setter Property="HeaderTemplate">
+            <Setter.Value>
+                <DataTemplate>
+                    <TextBlock Text="{Binding}" 
+                               FontSize="14" 
+                               FontWeight="SemiBold" 
+                               Foreground="{StaticResource PrimaryForeground}"/>
+                </DataTemplate>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="Margin" Value="5,10"/>
+    </Style>
+
+</ResourceDictionary>
+</file>
+
+<file path="TekTomato/Resources/Themes/Dark.xaml">
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    
+    <!-- Colour Palette for Dark Theme -->
+    <Color x:Key="PrimaryBackground">#1a1a1a</Color>
+    <Color x:Key="SecondaryBackground">#2d2d2d</Color>
+    <Color x:Key="TertiaryBackground">#333333</Color>
+    
+    <Color x:Key="PrimaryForeground">#ffffff</Color>
+    <Color x:Key="SecondaryForeground">#999999</Color>
+    <Color x:Key="DisabledForeground">#666666</Color>
+    
+    <Color x:Key="AccentGreen">#4caf50</Color>
+    <Color x:Key="AccentBlue">#2196f3</Color>
+    <Color x:Key="AccentDanger">#e53935</Color>
+    <Color x:Key="AccentWarning">#ff9800</Color>
+    
+    <Color x:Key="ButtonBackground">#3d3d3d</Color>
+    <Color x:Key="ButtonHover">#555555</Color>
+    <Color x:Key="ButtonBorder">#444444</Color>
+    
+    <Color x:Key="WindowBackground">#1a1a1a</Color>
+    <Color x:Key="OverlayBackground">#000000</Color>
+
+</ResourceDictionary>
+</file>
+
+<file path="TekTomato/Resources/Themes/Light.xaml">
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    
+    <!-- Colour Palette for Light Theme -->
+    <Color x:Key="PrimaryBackground">#f5f5f5</Color>
+    <Color x:Key="SecondaryBackground">#e0e0e0</Color>
+    <Color x:Key="TertiaryBackground">#d6d6d6</Color>
+    
+    <Color x:Key="PrimaryForeground">#212121</Color>
+    <Color x:Key="SecondaryForeground">#666666</Color>
+    <Color x:Key="DisabledForeground">#999999</Color>
+    
+    <Color x:Key="AccentGreen">#388e3c</Color>
+    <Color x:Key="AccentBlue">#1976d2</Color>
+    <Color x:Key="AccentDanger">#d32f2f</Color>
+    <Color x:Key="AccentWarning">#f57c00</Color>
+    
+    <Color x:Key="ButtonBackground">#dddddd</Color>
+    <Color x:Key="ButtonHover">#cccccc</Color>
+    <Color x:Key="ButtonBorder">#bbbbbb</Color>
+    
+    <Color x:Key="WindowBackground">#f5f5f5</Color>
+    <Color x:Key="OverlayBackground">#ffffff</Color>
+
+</ResourceDictionary>
+</file>
+
+<file path="TekTomato/Views/OverlayWindow.xaml">
+<Window x:Class="TekTomato.Views.OverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="TekTomato Overlay" 
+        Height="180" Width="260"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Topmost="True"
+        Background="Transparent"
+        ResizeMode="NoResize"
+        MouseDown="OnMouseDown"
+        Closing="OnWindowClosing">
+    
+    <Grid>
+        <!-- Background Panel with adjustable opacity -->
+        <Border x:Name="BackgroundPanel" 
+                CornerRadius="12"
+                Padding="5">
+            <Border.Background>
+                <SolidColorBrush Color="{StaticResource OverlayBackground}"/>
+            </Border.Background>
+            <Border.Opacity>
+                <Binding Path="BackgroundOpacity" RelativeSource="{RelativeSource AncestorType={x:Type Window}}" Mode="OneWay"/>
+            </Border.Opacity>
+        </Border>
+
+        <!-- Content Grid (always opaque) -->
+        <Grid x:Name="ContentGrid" 
+              Opacity="1.0"
+              Margin="5">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Top Section: Session Type and Icon Buttons -->
+            <Grid Grid.Row="0" Margin="0,8,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Session Type Label -->
+                <TextBlock x:Name="SessionTypeLabel"
+                           Grid.Column="0"
+                           Style="{StaticResource SmallLabelText}"
+                           Text="Focus"
+                           VerticalAlignment="Top"/>
+
+                <!-- Icon Buttons Row (Settings and Stats) -->
+                <StackPanel Grid.Column="1" 
+                            Orientation="Horizontal" 
+                            HorizontalAlignment="Right">
+                    <Button x:Name="SettingsIconButton"
+                            Content="⚙️"
+                            Style="{StaticResource IconButtonStyle}"
+                            ToolTip="Open Settings"
+                            Click="OnSettingsIconClick"/>
+                    <Button x:Name="StatsIconButton"
+                            Content="📊"
+                            Style="{StaticResource IconButtonStyle}"
+                            ToolTip="View Statistics"
+                            Margin="5,0"
+                            Click="OnStatsIconClick"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Centre Section: Timer Display -->
+            <TextBlock x:Name="TimerDisplay"
+                       Grid.Row="1"
+                       Style="{StaticResource LargeTimerText}"
+                       Text="Ready"/>
+
+            <!-- Main Action Button Row -->
+            <StackPanel Grid.Row="2" 
+                        Orientation="Horizontal" 
+                        HorizontalAlignment="Center"
+                        Margin="0,8,0,0">
+                
+                <!-- Start/Pause/Resume Button -->
+                <Button x:Name="MainActionButton"
+                        Content="Start"
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        Click="OnMainActionClick"/>
+
+                <!-- Complete Session Button (visible during Overrun) -->
+                <Button x:Name="CompleteSessionButton"
+                        Content="✅"
+                        Style="{StaticResource ActionButtonStyle}"
+                        ToolTip="Mark as Completed"
+                        Visibility="Collapsed"
+                        Click="OnCompleteSessionClick"/>
+
+                <!-- Cancel Session Button (visible during Overrun) -->
+                <Button x:Name="CancelButton"
+                        Content="❌"
+                        Style="{StaticResource ActionButtonStyle}"
+                        ToolTip="Cancel Session"
+                        Visibility="Collapsed"
+                        Click="OnCancelSessionClick"/>
+            </StackPanel>
+
+            <!-- Bottom Section: Action Buttons (Start Pomodoro/Short Break/Long Break) -->
+            <WrapPanel x:Name="ActionButtonsPanel"
+                       Grid.Row="3"
+                       HorizontalAlignment="Center"
+                       Margin="0,8,0,8"
+                       Visibility="Visible">
+                
+                <Button x:Name="StartPomodoroButton"
+                        Content="🍅 Start"
+                        Style="{StaticResource ActionButtonStyle}"
+                        Click="OnStartPomodoroClick"/>
+
+                <Button x:Name="StartShortBreakButton"
+                        Content="☕ Short Break"
+                        Style="{StaticResource ActionButtonStyle}"
+                        Click="OnStartShortBreakClick"/>
+
+                <Button x:Name="StartLongBreakButton"
+                        Content="🚀 Long Break"
+                        Style="{StaticResource ActionButtonStyle}"
+                        Click="OnStartLongBreakClick"/>
+            </WrapPanel>
+        </Grid>
+    </Grid>
+</Window>
+</file>
+
+<file path="TekTomato/Views/OverlayWindow.xaml.cs">
+using System;
+using System.Windows;
+using System.Windows.Controls;
+using TekTomato.ViewModels;
+
+namespace TekTomato.Views
+{
+    /// <summary>
+    /// Interaction logic for the main overlay window displaying the Pomodoro timer.
+    /// </summary>
+    public partial class OverlayWindow : Window
+    {
+        #region Private Fields
+
+        private readonly OverlayViewModel _viewModel;
+
+        #endregion Private Fields
+
+        #region Constructor
+
+        /// <summary>
+        /// Initialises the OverlayWindow with the associated ViewModel.
+        /// Sets up window initialisation, bindings, and positioning.
+        /// </summary>
+        public OverlayWindow(OverlayViewModel viewModel)
+        {
+            _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
+
+            InitializeComponent();
+            
+            // Set DataContext for MVVM bindings
+            DataContext = _viewModel;
+
+            // Apply settings-based initialisation
+            OnInitialised();
+        }
+
+        #endregion Constructor
+
+        #region Private Methods
+
+        /// <summary>
+        /// Initialises the window after component construction is complete.
+        /// Sets up visibility states and retrieves saved position from SettingsService.
+        /// </summary>
+        private void OnInitialised()
+        {
+            // Apply visibility based on initial state
+            UpdateButtonVisibility();
+
+            // Retrieve saved window position if available (from SettingsService)
+            var x = _viewModel.BackgroundOpacity; // Using BackgroundOpacity as proxy for now
+            // Note: Position retrieval should come from SettingsService via ViewModel
+            
+            // Show without activation (prevents stealing focus from other apps)
+            Show();
+
+            // Set initial window location to center of screen if no saved position
+            var screenWidth = SystemParameters.PrimaryScreenWidth;
+            var screenHeight = SystemParameters.PrimaryScreenHeight;
+            Left = (screenWidth - Width) / 2;
+            Top = (screenHeight - Height) / 3;
+        }
+
+        /// <summary>
+        /// Updates button visibility based on current timer state.
+        /// Shows action buttons in Idle/Completed states, shows completion buttons during Overrun.
+        /// </summary>
+        private void UpdateButtonVisibility()
+        {
+            // Action buttons panel visibility bound to ShowActionButtons property
+            ActionButtonsPanel.Visibility = _viewModel.ShowActionButtons ? Visibility.Visible : Visibility.Collapsed;
+
+            // Completion action buttons visibility for overrun state
+            CompleteSessionButton.Visibility = (_viewModel.CurrentState == Services.TimerState.Overrun) 
+                ? Visibility.Visible 
+                : Visibility.Collapsed;
+
+            CancelButton.Visibility = (_viewModel.CurrentState != Services.TimerState.Idle && 
+                                      _viewModel.CurrentState != Services.TimerState.Completed)
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        }
+
+        /// <summary>
+        /// Handles the main action button click (Start/Pause/Resume).
+        /// Routes to appropriate ViewModel command based on current state.
+        /// </summary>
+        private void OnMainActionClick(object sender, RoutedEventArgs e)
+        {
+            if (_viewModel.CurrentState == Services.TimerState.Idle || 
+                _viewModel.CurrentState == Services.TimerState.Completed)
+            {
+                // Start first pomodoro by default when in idle state
+                _viewModel.StartPomodoroCommand.Execute(null);
+            }
+            else if (_viewModel.CurrentState == Services.TimerState.Running ||
+                     _viewModel.CurrentState == Services.TimerState.Overrun)
+            {
+                _viewModel.PauseCommand.Execute(null);
+            }
+            else if (_viewModel.CurrentState == Services.TimerState.Paused)
+            {
+                _viewModel.ResumeCommand.Execute(null);
+            }
+
+            UpdateButtonVisibility();
+        }
+
+        /// <summary>
+        /// Handles complete session button click.
+        /// Marks the current session as completed.
+        /// </summary>
+        private void OnCompleteSessionClick(object sender, RoutedEventArgs e)
+        {
+            _viewModel.CompleteSessionCommand.Execute(null);
+            UpdateButtonVisibility();
+        }
+
+        /// <summary>
+        /// Handles cancel session button click.
+        /// Cancels the current running session and returns to idle state.
+        /// </summary>
+        private void OnCancelSessionClick(object sender, RoutedEventArgs e)
+        {
+            _viewModel.CancelSessionCommand.Execute(null);
+            UpdateButtonVisibility();
+        }
+
+        /// <summary>
+        /// Handles start Pomodoro button click.
+        /// Initiates a work session.
+        /// </summary>
+        private void OnStartPomodoroClick(object sender, RoutedEventArgs e)
+        {
+            _viewModel.StartPomodoroCommand.Execute(null);
+            UpdateButtonVisibility();
+        }
+
+        /// <summary>
+        /// Handles start short break button click.
+        /// Initiates a short break session.
+        /// </summary>
+        private void OnStartShortBreakClick(object sender, RoutedEventArgs e)
+        {
+            _viewModel.StartShortBreakCommand.Execute(null);
+            UpdateButtonVisibility();
+        }
+
+        /// <summary>
+        /// Handles start long break button click.
+        /// Initiates a long break session.
+        /// </summary>
+        private void OnStartLongBreakClick(object sender, RoutedEventArgs e)
+        {
+            _viewModel.StartLongBreakCommand.Execute(null);
+            UpdateButtonVisibility();
+        }
+
+        /// <summary>
+        /// Handles settings icon button click.
+        /// Opens the Settings window.
+        /// </summary>
+        private void OnSettingsIconClick(object sender, RoutedEventArgs e)
+        {
+            _viewModel.OpenSettingsCommand.Execute(null);
+        }
+
+        /// <summary>
+        /// Handles statistics icon button click.
+        /// Opens the Statistics window.
+        /// </summary>
+        private void OnStatsIconClick(object sender, RoutedEventArgs e)
+        {
+            _viewModel.OpenStatsCommand.Execute(null);
+        }
+
+        /// <summary>
+        /// Handles mouse down event to enable window dragging.
+        /// Allows the overlay window to be repositioned by dragging anywhere on the window.
+        /// </summary>
+        private void OnMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            // Start drag operation when left mouse button is pressed
+            if (e.ChangedButton == MouseButton.Left)
+            {
+                DragMove();
+            }
+        }
+
+        /// <summary>
+        /// Handles window closing event to minimise to system tray instead of exiting.
+        /// Prevents the overlay from disappearing on X button click.
+        /// </summary>
+        private void OnWindowClosing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            // Cancel the default close operation
+            e.Cancel = true;
+
+            // Minimise to system tray (hide window)
+            Hide();
+
+            // Note: System tray icon functionality would be implemented via H.NotifyIcon in App.xaml.cs
+            // For now, we simply hide the window
+        }
+
+        #endregion Private Methods
+    }
+}
+</file>
+
+<file path="TekTomato/Views/SettingsWindow.xaml">
+<Window x:Class="TekTomato.Views.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Settings" 
+        Height="500" Width="480"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="CanResizeWithGrip"
+        Background="{StaticResource PrimaryBackground}">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <TextBlock Grid.Row="0"
+                   Text="TekTomato Settings"
+                   FontSize="24"
+                   FontWeight="SemiBold"
+                   Foreground="{StaticResource PrimaryForeground}"
+                   HorizontalAlignment="Center"
+                   Margin="0,0,0,15"/>
+
+        <!-- Settings Content ScrollViewer -->
+        <ScrollViewer Grid.Row="1"
+                      VerticalScrollBarVisibility="Auto">
+            <Grid>
+                <!-- Timer Durations Section -->
+                <GroupBox Header="Timer Durations (minutes)" Style="{StaticResource GroupBoxStyle}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Work Duration -->
+                        <StackPanel Grid.Row="0" Orientation="Horizontal">
+                            <TextBlock Text="Work:" 
+                                       VerticalAlignment="Center" 
+                                       Margin="15,0,5,0"
+                                       Foreground="{StaticResource PrimaryForeground}"
+                                       Width="60"/>
+                            <TextBox x:Name="WorkDurationBox"
+                                     Text="{Binding WorkDurationMinutes, UpdateSourceTrigger=PropertyChanged}"
+                                     Width="80"
+                                     Style="{StaticResource TextBoxStyle}"/>
+                            <TextBlock Text="minutes" 
+                                       VerticalAlignment="Center" 
+                                       Margin="5,0"
+                                       Foreground="{StaticResource SecondaryForeground}"/>
+                        </StackPanel>
+
+                        <!-- Short Break Duration -->
+                        <StackPanel Grid.Row="1" Orientation="Horizontal">
+                            <TextBlock Text="Short break:" 
+                                       VerticalAlignment="Center" 
+                                       Margin="15,0,5,0"
+                                       Foreground="{StaticResource PrimaryForeground}"
+                                       Width="60"/>
+                            <TextBox x:Name="ShortBreakBox"
+                                     Text="{Binding ShortBreakMinutes, UpdateSourceTrigger=PropertyChanged}"
+                                     Width="80"
+                                     Style="{StaticResource TextBoxStyle}"/>
+                            <TextBlock Text="minutes" 
+                                       VerticalAlignment="Center" 
+                                       Margin="5,0"
+                                       Foreground="{StaticResource SecondaryForeground}"/>
+                        </StackPanel>
+
+                        <!-- Long Break Duration -->
+                        <StackPanel Grid.Row="2" Orientation="Horizontal">
+                            <TextBlock Text="Long break:" 
+                                       VerticalAlignment="Center" 
+                                       Margin="15,0,5,0"
+                                       Foreground="{StaticResource PrimaryForeground}"
+                                       Width="60"/>
+                            <TextBox x:Name="LongBreakBox"
+                                     Text="{Binding LongBreakMinutes, UpdateSourceTrigger=PropertyChanged}"
+                                     Width="80"
+                                     Style="{StaticResource TextBoxStyle}"/>
+                            <TextBlock Text="minutes" 
+                                       VerticalAlignment="Center" 
+                                       Margin="5,0"
+                                       Foreground="{StaticResource SecondaryForeground}"/>
+                        </StackPanel>
+
+                        <!-- Long Break Interval -->
+                        <StackPanel Grid.Row="3" Orientation="Horizontal">
+                            <TextBlock Text="Pomodoros until long break:" 
+                                       VerticalAlignment="Center" 
+                                       Margin="15,0,5,0"
+                                       Foreground="{StaticResource PrimaryForeground}"
+                                       Width="60"/>
+                            <TextBox x:Name="LongBreakIntervalBox"
+                                     Text="{Binding LongBreakInterval, UpdateSourceTrigger=PropertyChanged}"
+                                     Width="80"
+                                     Style="{StaticResource TextBoxStyle}"/>
+                        </StackPanel>
+                    </Grid>
+                </GroupBox>
+
+                <!-- Sound Section -->
+                <GroupBox Header="Sound" Style="{StaticResource GroupBoxStyle}">
+                    <StackPanel>
+                        <ComboBox x:Name="SoundComboBox"
+                                  ItemsSource="{Binding AvailableSounds}"
+                                  SelectedItem="{Binding SelectedSound, UpdateSourceTrigger=PropertyChanged}"
+                                  Style="{StaticResource ComboBoxStyle}"/>
+                        
+                        <Button Content="🔊 Test Sound"
+                                Command="{Binding TestSoundCommand}"
+                                Style="{StaticResource ActionButtonStyle}"
+                                Margin="0,10,0,0"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- Appearance Section -->
+                <GroupBox Header="Appearance" Style="{StaticResource GroupBoxStyle}">
+                    <StackPanel>
+                        <!-- Theme Selection -->
+                        <TextBlock Text="Theme:"
+                                   Foreground="{StaticResource PrimaryForeground}"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,5"/>
+                        <ComboBox x:Name="ThemeComboBox"
+                                  ItemsSource="{Binding AvailableThemes}"
+                                  SelectedItem="{Binding SelectedTheme, UpdateSourceTrigger=PropertyChanged}"
+                                  Style="{StaticResource ComboBoxStyle}"/>
+
+                        <!-- Opacity Slider -->
+                        <TextBlock Text="Background Opacity:"
+                                   Foreground="{StaticResource PrimaryForeground}"
+                                   FontWeight="SemiBold"
+                                   Margin="0,15,0,5"/>
+                        
+                        <StackPanel Orientation="Horizontal">
+                            <Slider x:Name="OpacitySlider"
+                                    Minimum="20"
+                                    Maximum="100"
+                                    Value="{Binding BackgroundOpacityPercent, UpdateSourceTrigger=PropertyChanged}"
+                                    Style="{StaticResource SliderStyle}"/>
+                            
+                            <TextBlock x:Name="OpacityLabel"
+                                       Text="80%"
+                                       Foreground="{StaticResource PrimaryForeground}"
+                                       Width="45"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- Reset Button -->
+                <Button x:Name="ResetDefaultsButton"
+                        Content="↺ Reset to Defaults"
+                        Style="{StaticResource ActionButtonStyle}"
+                        Margin="0,20,0,0"
+                        Click="OnResetDefaultsClick"/>
+            </Grid>
+        </ScrollViewer>
+
+        <!-- Footer Buttons -->
+        <StackPanel Grid.Row="2" 
+                    Orientation="Horizontal" 
+                    HorizontalAlignment="Right"
+                    Margin="0,15,0,0">
+            
+            <Button x:Name="CancelButton"
+                    Content="Cancel"
+                    Style="{StaticResource ActionButtonStyle}"
+                    Command="{Binding CancelCommand}"/>
+            
+            <Button x:Name="SaveButton"
+                    Content="Save Changes"
+                    Style="{StaticResource PrimaryButtonStyle}"
+                    Command="{Binding SaveCommand}"/>
+        </StackPanel>
+    </Grid>
+</Window>
+</file>
+
+<file path="TekTomato/Views/SettingsWindow.xaml.cs">
+using System;
+using System.Windows;
+using TekTomato.ViewModels;
+
+namespace TekTomato.Views
+{
+    /// <summary>
+    /// Interaction logic for the Settings modal window.
+    /// Displays application configuration options for timer durations, sounds, and appearance.
+    /// </summary>
+    public partial class SettingsWindow : Window
+    {
+        #region Private Fields
+
+        private readonly SettingsViewModel _viewModel;
+
+        #endregion Private Fields
+
+        #region Constructor
+
+        /// <summary>
+        /// Initialises the SettingsWindow with the associated ViewModel.
+        /// Sets up bindings and initialises UI state.
+        /// </summary>
+        public SettingsWindow(SettingsViewModel viewModel)
+        {
+            _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
+
+            InitializeComponent();
+            
+            // Set DataContext for MVVM bindings
+            DataContext = _viewModel;
+
+            // Apply opacity label update logic
+            OpacitySlider.ValueChanged += OnOpacitySliderValueChanged;
+        }
+
+        #endregion Constructor
+
+        #region Event Handlers
+
+        /// <summary>
+        /// Handles opacity slider value changes to update the display label.
+        /// </summary>
+        private void OnOpacitySliderValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (sender is Slider slider)
+            {
+                OpacityLabel.Text = $"{(int)slider.Value}%";
+            }
+        }
+
+        /// <summary>
+        /// Handles reset to defaults button click.
+        /// </summary>
+        private void OnResetDefaultsClick(object sender, RoutedEventArgs e)
+        {
+            if (_viewModel.ResetToDefaultsCommand.CanExecute(null))
+            {
+                _viewModel.ResetToDefaultsCommand.Execute(null);
+            }
+        }
+
+        #endregion Event Handlers
+
+        #region Public Methods
+
+        /// <summary>
+        /// Shows the settings window as a modal dialog.
+        /// </summary>
+        public void ShowModal()
+        {
+            // Show window (caller handles whether to use .Show() or .ShowDialog())
+            Show();
+        }
+
+        #endregion Public Methods
+    }
+}
+</file>
+
+<file path="TekTomato/Views/StatsWindow.xaml">
+<Window x:Class="TekTomato.Views.StatsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
+        xmlns:skia="clr-namespace:SkiaSharp.Views.WPF;assembly=SkiaSharp.Views.WPF"
+        Title="Statistics" 
+        Height="500" Width="780"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource PrimaryBackground}">
+
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header with Title and Controls -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal">
+            <TextBlock Text="📊 Statistics Dashboard"
+                       FontSize="24"
+                       FontWeight="SemiBold"
+                       Foreground="{StaticResource PrimaryForeground}"/>
+            
+            <ComboBox x:Name="DateRangeComboBox"
+                      Grid.Column="1"
+                      ItemsSource="{Binding SelectedRange, Mode=OneWay}"
+                      SelectionChanged="OnDateRangeChanged"
+                      HorizontalAlignment="Right"
+                      Margin="20,0,0,0"
+                      Width="150"
+                      Style="{StaticResource ComboBoxStyle}"/>
+        </StackPanel>
+
+        <!-- Chart View Toggle -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,10,0,10">
+            <RadioButton Content="📅 Daily View"
+                         IsChecked="{Binding IsWeeklyView, Mode=OneWay}"
+                         Style="{StaticResource RadioButtonStyle}"/>
+            
+            <RadioButton Content="📈 Weekly View"
+                         IsChecked="{Binding IsWeeklyView, Mode=OneWay}"
+                         Style="{StaticResource RadioButtonStyle}"
+                         Margin="20,0,0,0"/>
+        </StackPanel>
+
+        <!-- Main Content: Heatmap and Line Chart -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left Column: Calendar Heatmap -->
+            <GroupBox Header="Activity Heatmap" Style="{StaticResource GroupBoxStyle}" Grid.Column="0">
+                <skia:SKElement x:Name="HeatmapCanvas" 
+                                PaintSurface="OnHeatmapPaintSurface"/>
+            </GroupBox>
+
+            <!-- Right Column: Focus Minutes Line Chart -->
+            <GroupBox Header="Focus Minutes" Style="{StaticResource GroupBoxStyle}" Grid.Column="1">
+                <lvc:CartesianChart x:Name="LineChart"
+                                    Series="{Binding LineChartSeries}"
+                                    XAxes="{Binding XAxes}">
+                    <lvc:CartesianChart.AxisY>
+                        <lvc:Axis Title="Minutes"/>
+                    </lvc:CartesianChart.AxisY>
+                </lvc:CartesianChart>
+            </GroupBox>
+        </Grid>
+
+        <!-- Footer: Refresh Button -->
+        <StackPanel Grid.Row="3" 
+                    Orientation="Horizontal" 
+                    HorizontalAlignment="Center"
+                    Margin="0,15,0,0">
+            
+            <Button Content="🔄 Refresh Data"
+                    Command="{Binding RefreshCommand}"
+                    Style="{StaticResource ActionButtonStyle}"/>
+        </StackPanel>
+    </Grid>
+</Window>
+</file>
+
+<file path="TekTomato/Views/StatsWindow.xaml.cs">
+using System;
+using System.Collections.Generic;
+using System.Windows;
+using System.Windows.Media.Imaging;
+using SkiaSharp;
+using SkiaSharp.Views.WPF;
+using TekTomato.ViewModels;
+
+namespace TekTomato.Views
+{
+    /// <summary>
+    /// Interaction logic for the Statistics window displaying Pomodoro analytics.
+    /// Contains heatmap canvas and line chart visualisation of focus data.
+    /// </summary>
+    public partial class StatsWindow : Window
+    {
+        #region Private Fields
+
+        private readonly StatsViewModel _viewModel;
+
+        #endregion Private Fields
+
+        #region Constructor
+
+        /// <summary>
+        /// Initialises the StatsWindow with the associated ViewModel.
+        /// Sets up data binding and initialises chart rendering components.
+        /// </summary>
+        public StatsWindow(StatsViewModel viewModel)
+        {
+            _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
+
+            InitializeComponent();
+            
+            // Set DataContext for MVVM bindings
+            DataContext = _viewModel;
+
+            // Wait for VM to load data before initialising chart
+            Loaded += OnWindowLoaded;
+        }
+
+        #endregion Constructor
+
+        #region Event Handlers
+
+        /// <summary>
+        /// Handles window loaded event to trigger initial data refresh.
+        /// </summary>
+        private async void OnWindowLoaded(object sender, RoutedEventArgs e)
+        {
+            // Give VM time to load initial data
+            await Task.Delay(100);
+
+            // Trigger heatmap repaint after data is loaded
+            HeatmapCanvas.InvalidateSurface();
+        }
+
+        /// <summary>
+        /// Handles date range combo box selection changes.
+        /// </summary>
+        private void OnDateRangeChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            // Data loading is handled by the View Model's SelectedRange binding
+            // This event handler ensures UI updates properly
+            if (_viewModel.RefreshCommand.CanExecute(null))
+            {
+                Task.Run(async () => await _viewModel.RefreshCommand.ExecuteAsync(null));
+                
+                // Refresh heatmap canvas after data update
+                Dispatcher.BeginInvoke(new Action(() => HeatmapCanvas.InvalidateSurface()));
+            }
+        }
+
+        /// <summary>
+        /// Handles SKElement paint surface event for rendering the activity heatmap.
+        /// Delegates to HeatmapRenderer helper method with current ViewModel data.
+        /// </summary>
+        private void OnHeatmapPaintSurface(object sender, SKPaintSurfaceEventArgs e)
+        {
+            var info = e.Info;
+            using (var canvas = e.Surface.Canvas)
+            {
+                // Clear the canvas with background colour
+                canvas.Clear(SKColors.Transparent);
+
+                // Render heatmap using helper method
+                HeatmapRenderer.RenderHeatmap(canvas, info, _viewModel.HeatmapData);
+            }
+        }
+
+        #endregion Event Handlers
+    }
+
+    /// <summary>
+    /// Static helper class for rendering activity heatmap visualisation.
+    /// </summary>
+    public static class HeatmapRenderer
+    {
+        #region Private Constants
+
+        private const int CELL_PADDING = 2;
+        private const int LABEL_SIZE = 12;
+        
+        // Colour palette for activity levels (0-5+ pomodoros per day)
+        private static readonly SKColor[] ActivityColours = new SKColor[]
+        {
+            SKColors.White,        // No activity
+            SKColor.Parse("#388E3C"),  // 1-2 pomodoros
+            SKColor.Parse("#66BB6A"),  // 3 pomodoros
+            SKColor.Parse("#81C784"),  // 4 pomodoros
+            SKColor.Parse("#A5D6A7"),  // 5+ pomodoros
+        };
+
+        #endregion Private Constants
+
+        /// <summary>
+        /// Renders the activity heatmap on the provided canvas.
+        /// Takes a dictionary of dates mapped to pomodoro counts and displays as calendar grid.
+        /// </summary>
+        /// <param name="canvas">The SkiaSharp canvas to render on.</param>
+        /// <param name="info">Canvas surface information including size.</param>
+        /// <param name="heatmapData">Dictionary mapping dates to pomodoro counts.</param>
+        public static void RenderHeatmap(SKCanvas canvas, SKImageInfo info, Dictionary<DateOnly, int> heatmapData)
+        {
+            if (heatmapData == null || heatmapData.Count == 0)
+            {
+                // Draw empty state message
+                using (var paint = new SKPaint
+                {
+                    TextSize = 24,
+                    Color = SKColors.Gray,
+                    TextAlign = SKTextAlign.Center
+                })
+                {
+                    canvas.DrawText("No activity data available", 
+                        info.Width / 2f, 
+                        info.Height / 2f, 
+                        paint);
+                }
+                return;
+            }
+
+            // Get date range for the heatmap display (show last 90 days)
+            var endDate = DateOnly.FromDateTime(DateTime.UtcNow);
+            var startDate = endDate.AddDays(-89);
+
+            // Calculate grid dimensions
+            const int weeksToShow = 13;
+            const int daysPerWeek = 7;
+            
+            var totalCells = weeksToShow * daysPerWeek;
+            
+            // Calculate cell size based on available space minus labels
+            var headerHeight = 25.0f;
+            var labelWidth = 35.0f;
+            var availableWidth = info.Width - labelWidth - 10;
+            var availableHeight = info.Height - headerHeight - 10;
+            
+            var cellSize = Math.Min(availableWidth / daysPerWeek, availableHeight / weeksToShow) - CELL_PADDING * 2;
+
+            // Create brushes and paints
+            var backgroundBrush = new SKPaint { Color = SKColor.Parse("#2D2D2D") };
+            var textPaint = new SKPaint 
+            { 
+                TextSize = LABEL_SIZE, 
+                Color = SKColors.White,
+                TextAlign = SKTextAlign.Center
+            };
+
+            // Draw grid header (week numbers or dates)
+            for (int week = 0; week < weeksToShow; week++)
+            {
+                var yPos = 10 + headerHeight + week * (cellSize + CELL_PADDING);
+                
+                using (var rectPaint = new SKPaint 
+                { 
+                    Color = SKColor.Parse("#2D2D2D"),
+                    Style = SKPaintStyle.Stroke,
+                    StrokeWidth = 1.5f
+                })
+                {
+                    var weekStart = endDate.AddDays(-week * 7);
+                    canvas.DrawRect(new SKRect(10, yPos - CELL_PADDING, availableWidth + labelWidth, 
+                        yPos + cellSize + CELL_PADDING), rectPaint);
+                }
+
+                // Draw week number/label on left
+                using (var labelPaint = new SKPaint
+                {
+                    TextSize = LABEL_SIZE,
+                    Color = SKColor.Parse("#999999"),
+                    TextAlign = SKTextAlign.Right
+                })
+                {
+                    canvas.DrawText($"W{week + 1}", 0, yPos + (cellSize - LABEL_SIZE) / 2f, labelPaint);
+                }
+            }
+
+            // Render activity cells
+            foreach (var kvp in heatmapData)
+            {
+                var date = kvp.Key;
+                var count = kvp.Value;
+
+                // Only render dates within display range
+                if (date < startDate || date > endDate)
+                    continue;
+
+                // Calculate position relative to start date
+                var daysFromEnd = (endDate - date).Days;
+                if (daysFromEnd < 0 || daysFromEnd >= 91)
+                    continue;
+
+                var weekIndex = daysFromEnd / 7;
+                var dayOfWeek = (int)date.DayOfWeek; // 0=Monday, 6=Sunday
+
+                var xPos = 15 + labelWidth + dayOfWeek * (cellSize + CELL_PADDING);
+                var yPos = 10 + headerHeight + weekIndex * (cellSize + CELL_PADDING);
+
+                // Get colour based on activity level
+                var colourIndex = Math.Min(count, ActivityColours.Length - 1);
+                var cellColour = ActivityColours[colourIndex];
+
+                // Draw cell rectangle with activity colour
+                using (var cellPaint = new SKPaint 
+                { 
+                    Color = cellColour,
+                    IsAntialias = true
+                })
+                {
+                    canvas.DrawRoundRect(new SKRect(xPos, yPos, xPos + cellSize, yPos + cellSize),
+                        4, 4, // Corner radius
+                        cellPaint);
+                }
+
+                // Draw pomodoro count if applicable
+                if (count > 0)
+                {
+                    using (var countPaint = new SKPaint
+                    {
+                        TextSize = 10,
+                        Color = SKColors.White,
+                        TextAlign = SKTextAlign.Center
+                    })
+                    {
+                        canvas.DrawText(count.ToString(), 
+                            xPos + cellSize / 2f, 
+                            yPos + cellSize / 2f, 
+                            countPaint);
+                    }
+                }
+            }
+
+            // Add legend at bottom
+            DrawLegend(canvas, info.Width, info.Height);
+        }
+
+        /// <summary>
+        /// Renders the activity level legend at the bottom of the heatmap canvas.
+        /// </summary>
+        private static void DrawLegend(SKCanvas canvas, float width, float height)
+        {
+            using (var paint = new SKPaint 
+            { 
+                TextSize = LABEL_SIZE, 
+                Color = SKColor.Parse("#999999") 
+            })
+            {
+                var legendY = height - 20;
+                
+                // Draw "No Activity" indicator
+                canvas.DrawCircle(50f, legendY, 10, new SKPaint { Color = SKColors.White });
+                canvas.DrawText("No Activity", 75f, legendY, paint);
+
+                // Draw activity level indicators
+                var xPos = 200f;
+                for (int i = 1; i < ActivityColours.Length; i++)
+                {
+                    canvas.DrawRect(new SKRect(xPos, legendY - 10, xPos + 20, legendY),
+                        new SKPaint { Color = ActivityColours[i] });
+                    
+                    var label = i == ActivityColours.Length - 1 ? "5+" : $"{i}+";
+                    canvas.DrawText(label, xPos + 10f, legendY, paint);
+                    
+                    xPos += 35;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Date range enumeration for statistics display.
+    /// </summary>
+    public enum SelectedRangeEnum
+    {
+        Last3Months,
+        Last6Months,
+        Last12Months,
+        AllTime
+    }
+}
+</file>

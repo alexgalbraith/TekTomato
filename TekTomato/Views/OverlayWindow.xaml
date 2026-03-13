@@ -1,0 +1,132 @@
+<Window x:Class="TekTomato.Views.OverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="TekTomato Overlay" 
+        Height="180" Width="260"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Topmost="True"
+        Background="Transparent"
+        ResizeMode="NoResize"
+        MouseDown="OnMouseDown"
+        Closing="OnWindowClosing">
+    
+    <Grid>
+        <!-- Background Panel with adjustable opacity -->
+        <Border x:Name="BackgroundPanel" 
+                CornerRadius="12"
+                Padding="5">
+            <Border.Background>
+                <SolidColorBrush Color="{StaticResource OverlayBackground}"/>
+            </Border.Background>
+            <Border.Opacity>
+                <Binding Path="BackgroundOpacity" RelativeSource="{RelativeSource AncestorType={x:Type Window}}" Mode="OneWay"/>
+            </Border.Opacity>
+        </Border>
+
+        <!-- Content Grid (always opaque) -->
+        <Grid x:Name="ContentGrid" 
+              Opacity="1.0"
+              Margin="5">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Top Section: Session Type and Icon Buttons -->
+            <Grid Grid.Row="0" Margin="0,8,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Session Type Label -->
+                <TextBlock x:Name="SessionTypeLabel"
+                           Grid.Column="0"
+                           Style="{StaticResource SmallLabelText}"
+                           Text="Focus"
+                           VerticalAlignment="Top"/>
+
+                <!-- Icon Buttons Row (Settings and Stats) -->
+                <StackPanel Grid.Column="1" 
+                            Orientation="Horizontal" 
+                            HorizontalAlignment="Right">
+                    <Button x:Name="SettingsIconButton"
+                            Content="⚙️"
+                            Style="{StaticResource IconButtonStyle}"
+                            ToolTip="Open Settings"
+                            Click="OnSettingsIconClick"/>
+                    <Button x:Name="StatsIconButton"
+                            Content="📊"
+                            Style="{StaticResource IconButtonStyle}"
+                            ToolTip="View Statistics"
+                            Margin="5,0"
+                            Click="OnStatsIconClick"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Centre Section: Timer Display -->
+            <TextBlock x:Name="TimerDisplay"
+                       Grid.Row="1"
+                       Style="{StaticResource LargeTimerText}"
+                       Text="Ready"/>
+
+            <!-- Main Action Button Row -->
+            <StackPanel Grid.Row="2" 
+                        Orientation="Horizontal" 
+                        HorizontalAlignment="Center"
+                        Margin="0,8,0,0">
+                
+                <!-- Start/Pause/Resume Button -->
+                <Button x:Name="MainActionButton"
+                        Content="Start"
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        Click="OnMainActionClick"/>
+
+                <!-- Complete Session Button (visible during Overrun) -->
+                <Button x:Name="CompleteSessionButton"
+                        Content="✅"
+                        Style="{StaticResource ActionButtonStyle}"
+                        ToolTip="Mark as Completed"
+                        Visibility="Collapsed"
+                        Click="OnCompleteSessionClick"/>
+
+                <!-- Cancel Session Button (visible during Overrun) -->
+                <Button x:Name="CancelButton"
+                        Content="❌"
+                        Style="{StaticResource ActionButtonStyle}"
+                        ToolTip="Cancel Session"
+                        Visibility="Collapsed"
+                        Click="OnCancelSessionClick"/>
+            </StackPanel>
+
+            <!-- Bottom Section: Action Buttons (Start Pomodoro/Short Break/Long Break) -->
+            <WrapPanel x:Name="ActionButtonsPanel"
+                       Grid.Row="3"
+                       HorizontalAlignment="Center"
+                       Margin="0,8,0,8"
+                       Visibility="Visible">
+                
+                <Button x:Name="StartPomodoroButton"
+                        Content="🍅 Start"
+                        Style="{StaticResource ActionButtonStyle}"
+                        Click="OnStartPomodoroClick"/>
+
+                <Button x:Name="StartShortBreakButton"
+                        Content="☕ Short Break"
+                        Style="{StaticResource ActionButtonStyle}"
+                        Click="OnStartShortBreakClick"/>
+
+                <Button x:Name="StartLongBreakButton"
+                        Content="🚀 Long Break"
+                        Style="{StaticResource ActionButtonStyle}"
+                        Click="OnStartLongBreakClick"/>
+            </WrapPanel>
+        </Grid>
+    </Grid>
+</Window>
