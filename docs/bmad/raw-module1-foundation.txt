@@ -1,0 +1,557 @@
+<file path="TekTomato.sln">
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TekTomato", "TekTomato\TekTomato.csproj", "{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
+</file>
+
+<file path="TekTomato/TekTomato.csproj">
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <ApplicationIcon>Assets\tomato.ico</ApplicationIcon>
+    <Version>1.0.0</Version>
+    <Authors>TekTomato Team</Authors>
+  </PropertyGroup>
+
+  <!-- Package References -->
+  <ItemGroup>
+    <!-- EF Core for SQLite Database Access -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.1" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+
+    <!-- MVVM Infrastructure -->
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
+
+    <!-- System Tray Icon Support -->
+    <PackageReference Include="H.NotifyIcon.Wpf" Version="2.1.1" />
+
+    <!-- Charts and Visualisation -->
+    <PackageReference Include="LiveChartsCore.SkiaSharpView.WPF" Version="2.0.0-rc3" />
+    <PackageReference Include="SkiaSharp.Views.WPF" Version="2.88.7" />
+
+    <!-- Dependency Injection -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+  </ItemGroup>
+
+  <!-- DPI Awareness for High-Res Displays -->
+  <PropertyGroup>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+  
+  <!-- Resources -->
+  <ItemGroup>
+    <Resource Include="Assets\tomato.ico" />
+  </ItemGroup>
+
+</Project>
+</file>
+
+<file path="TekTomato/App.xaml">
+<Application x:Class="TekTomato.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Startup="OnStartup"
+             Exit="OnExit">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- Common Styles (Fonts, Shapes, Templates) -->
+                <ResourceDictionary Source="Resources/Themes/Common.xaml" />
+                
+                <!-- Default Theme: Dark Mode -->
+                <!-- Will be swapped at runtime by ThemeService -->
+                <ResourceDictionary Source="Resources/Themes/Dark.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>
+</file>
+
+<file path="TekTomato/App.xaml.cs">
+using System;
+using System.IO;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using TekTomato.Data;
+using TekTomato.Services;
+using TekTomato.ViewModels;
+using TekTomato.Views;
+using System.Windows;
+
+namespace TekTomato
+{
+    /// <summary>
+    /// Entry point for the TekTomato application.
+    /// Responsible for initializing the DI container, applying migrations, and bootstrapping the UI.
+    /// </summary>
+    public partial class App : Application
+    {
+        private readonly IServiceProvider _serviceProvider;
+
+        public App()
+        {
+            var services = new ServiceCollection();
+            
+            // Register Services and ViewModels
+            ConfigureServices(services);
+
+            _serviceProvider = services.BuildServiceProvider();
+        }
+
+        /// <summary>
+        /// Configures the dependency injection container with all required services.
+        /// </summary>
+        private static void ConfigureServices(IServiceCollection services)
+        {
+            // Database Context - Scoped per request, but for desktop usually we can treat as Singleton if thread safe, 
+            // but EF Core recommends transient or scoped to avoid change tracker conflicts. 
+            // We use a factory pattern via constructor injection in App.xaml.cs specifically for the DbContext lifetime here 
+            // because we want to run Migrations synchronously at startup, which requires direct access.
+            services.AddDbContext<TekTomatoDbContext>(options =>
+                options.UseSqlite(BuildConnection()));
+
+            // Services
+            services.AddSingleton<SettingsService>();
+            services.AddSingleton<SessionService>();
+            services.AddSingleton<SoundService>();
+            services.AddSingleton<ThemeService>();
+            services.AddSingleton<TimerEngine>();
+
+            // ViewModels (Singletons for the duration of the app life)
+            services.AddSingleton<OverlayViewModel>();
+            services.AddSingleton<SettingsViewModel>();
+            services.AddSingleton<StatsViewModel>();
+
+            // Views
+            services.AddSingleton<OverlayWindow>();
+        }
+
+        /// <summary>
+        /// Builds the connection string for SQLite based on user's AppData folder.
+        /// </summary>
+        private static string BuildConnection()
+        {
+            var basePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TekTomato");
+            
+            // Ensure directory exists before attempting to open DB
+            if (!Directory.Exists(basePath))
+            {
+                Directory.CreateDirectory(basePath);
+            }
+
+            return $"Data Source={basePath}\\tektomato.db";
+        }
+
+        /// <summary>
+        /// Handles Application startup. Applies migrations and shows the main window.
+        /// </summary>
+        private void OnStartup(object sender, StartupEventArgs e)
+        {
+            try
+            {
+                using (var scope = _serviceProvider.CreateScope())
+                {
+                    // Run Migrations automatically on launch
+                    var context = scope.ServiceProvider.GetRequiredService<TekTomatoDbContext>();
+                    
+                    // Create directory manually before migration just in case connection string creation wasn't enough for DB file lock reasons
+                    var dbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TekTomato");
+                    if (!Directory.Exists(dbPath)) Directory.CreateDirectory(dbPath);
+
+                    context.Database.Migrate();
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log error or show dialog. For now, standard WPF error handling applies.
+                MessageBox.Show($"Failed to initialize database: {ex.Message}", "TekTomato Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                Shutdown(1);
+                return;
+            }
+
+            // Resolve and Show Main Window
+            var overlayWindow = _serviceProvider.GetRequiredService<OverlayWindow>();
+            
+            // Ensure the OverlayWindow is configured correctly by the ViewModel/Service (e.g. dragging logic)
+            // The ThemeService might need to apply initial theme here if not done via App.xaml default
+            var themeService = _serviceProvider.GetRequiredService<ThemeService>();
+            themeService.ApplyCurrentTheme();
+
+            overlayWindow.Show();
+        }
+
+        /// <summary>
+        /// Handles Application exit cleanup.
+        /// </summary>
+        private void OnExit(object sender, ExitEventArgs e)
+        {
+            // Clean up resources if necessary (e.g., close DB connections explicitly, though GC handles it)
+            _serviceProvider.Dispose();
+        }
+    }
+}
+</file>
+
+<file path="TekTomato/Models/PomodoroSession.cs">
+using System;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace TekTomato.Models
+{
+    /// <summary>
+    /// Represents a single completed Pomodoro session in the database.
+    /// </summary>
+    [Table("Sessions")]
+    public class PomodoroSession
+    {
+        /// <summary>
+        /// Unique identifier for the session.
+        /// </summary>
+        [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public int Id { get; set; }
+
+        /// <summary>
+        /// Type of session: "Work", "ShortBreak", or "LongBreak".
+        /// </summary>
+        [Required]
+        [MaxLength(50)]
+        public string SessionType { get; set; } = string.Empty;
+
+        /// <summary>
+        /// When the timer was started (UTC).
+        /// </summary>
+        [Required]
+        public DateTime StartedAtUtc { get; set; }
+
+        /// <summary>
+        /// When the user acknowledged completion (UTC).
+        /// </summary>
+        [Required]
+        public DateTime CompletedAtUtc { get; set; }
+
+        /// <summary>
+        /// The planned duration in seconds.
+        /// </summary>
+        [Required]
+        public int PlannedDurationSeconds { get; set; }
+
+        /// <summary>
+        /// The actual active time spent (excluding pauses).
+        /// </summary>
+        [Required]
+        public int ActualDurationSeconds { get; set; }
+
+        /// <summary>
+        /// Time spent past zero (Overtime) in seconds. Default 0.
+        /// </summary>
+        [Required]
+        public int OverrunSeconds { get; set; } = 0;
+
+        /// <summary>
+        /// Total time spent paused in seconds. Default 0.
+        /// </summary>
+        [Required]
+        public int PausedDurationSeconds { get; set; } = 0;
+
+        /// <summary>
+        /// True if the timer reached zero normally; False if abandoned early or manually stopped. Default true.
+        /// </summary>
+        [Required]
+        public bool CompletedNormally { get; set; } = true;
+
+        /// <summary>
+        /// Position in cycle (1-N) for Work sessions, null for breaks.
+        /// </summary>
+        public int? PomodoroNumber { get; set; }
+
+        // Navigation properties omitted for simplicity as this is a transactional entity without parent objects
+    }
+}
+</file>
+
+<file path="TekTomato/Models/Setting.cs">
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace TekTomato.Models
+{
+    /// <summary>
+    /// Represents an application setting stored in the database.
+    /// </summary>
+    [Table("Settings")]
+    public class Setting
+    {
+        /// <summary>
+        /// The unique key for the setting (e.g., "WorkDurationMinutes").
+        /// </summary>
+        [Key]
+        [MaxLength(100)]
+        public string Key { get; set; } = string.Empty;
+
+        /// <summary>
+        /// The value of the setting stored as a string.
+        /// </summary>
+        [Required]
+        [MaxLength(500)]
+        public string Value { get; set; } = string.Empty;
+    }
+}
+</file>
+
+<file path="TekTomato/Data/TekTomatoDbContext.cs">
+using System.IO;
+using Microsoft.EntityFrameworkCore;
+using TekTomato.Models;
+
+namespace TekTomato.Data
+{
+    /// <summary>
+    /// Database context for the TekTomato SQLite database.
+    /// </summary>
+    public class TekTomatoDbContext : DbContext
+    {
+        /// <summary>
+        /// Gets or sets the Pomodoro Sessions table.
+        /// </summary>
+        public DbSet<PomodoroSession> Sessions => Set<PomodoroSession>();
+
+        /// <summary>
+        /// Gets or sets the Application Settings table.
+        /// </summary>
+        public DbSet<Setting> Settings => Set<Setting>();
+
+        /// <summary>
+        /// Configures the database connection and model on creation.
+        /// </summary>
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            var basePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TekTomato");
+            
+            if (!Directory.Exists(basePath))
+            {
+                Directory.CreateDirectory(basePath);
+            }
+
+            var dbPath = Path.Combine(basePath, "tektomato.db");
+            optionsBuilder.UseSqlite($"Data Source={dbPath}");
+        }
+
+        /// <summary>
+        /// Configures entity relationships and indexes.
+        /// </summary>
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            // Configure Indexes for Sessions
+            modelBuilder.Entity<PomodoroSession>()
+                .HasIndex(s => s.StartedAtUtc)
+                .HasDatabaseName("IX_Sessions_StartedAtUtc");
+
+            modelBuilder.Entity<PomodoroSession>()
+                .HasIndex(s => new { s.SessionType, s.CompletedNormally })
+                .HasDatabaseName("IX_Sessions_SessionType_CompletedNormally");
+        }
+    }
+}
+</file>
+
+<file path="TekTomato/Data/Migrations/20260313000001_InitialCreate.cs">
+#nullable disable
+using Microsoft.EntityFrameworkCore.Migrations;
+
+namespace TekTomato.Data.Migrations
+{
+    /// <summary>
+    /// Initial migration creating Sessions and Settings tables.
+    /// </summary>
+    /// <remarks>
+    /// Generated to match the Data Model specifications in Architecture Document v1.0, Section 3.
+    /// </remarks>
+    public partial class InitialCreate : Migration
+    {
+        /// <summary>
+        /// Creates the tables and indexes on migration up.
+        /// </summary>
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            // Create Sessions Table
+            migrationBuilder.CreateTable(
+                name: "Sessions",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    SessionType = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
+                    StartedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    CompletedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    PlannedDurationSeconds = table.Column<int>(type: "INTEGER", nullable: false),
+                    ActualDurationSeconds = table.Column<int>(type: "INTEGER", nullable: false),
+                    OverrunSeconds = table.Column<int>(type: "INTEGER", nullable: false, defaultValue: 0),
+                    PausedDurationSeconds = table.Column<int>(type: "INTEGER", nullable: false, defaultValue: 0),
+                    CompletedNormally = table.Column<bool>(type: "INTEGER", nullable: false, defaultValue: true),
+                    PomodoroNumber = table.Column<int?>(type: "INTEGER", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Sessions", x => x.Id);
+                });
+
+            // Create Settings Table
+            migrationBuilder.CreateTable(
+                name: "Settings",
+                columns: table => new
+                {
+                    Key = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    Value = table.Column<string>(type: "TEXT", maxLength: 500, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Settings", x => x.Key);
+                });
+
+            // Create Indexes for Sessions
+            migrationBuilder.CreateIndex(
+                name: "IX_Sessions_SessionType_CompletedNormally",
+                table: "Sessions",
+                columns: new[] { "SessionType", "CompletedNormally" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Sessions_StartedAtUtc",
+                table: "Sessions",
+                column: "StartedAtUtc");
+        }
+
+        /// <summary>
+        /// Drops the tables on migration down.
+        /// </summary>
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.DropTable(
+                name: "Sessions");
+
+            migrationBuilder.DropTable(
+                name: "Settings");
+        }
+    }
+}
+</file>
+
+<file path="TekTomato/Data/Migrations/TekTomatoDbContextModelSnapshot.cs">
+#nullable disable
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using TekTomato.Data;
+
+namespace TekTomato.Data.Migrations
+{
+    /// <summary>
+    /// Snapshot of the EF Core model. Auto-generated by tooling.
+    /// </summary>
+    [DbContext(typeof(TekTomatoDbContext))]
+    [Migration("20260313000001_InitialCreate")]
+    partial class TekTomatoDbContextModelSnapshot : Migration
+    {
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        {
+#pragma warning disable 612, 618
+            modelBuilder.HasAnnotation("ProductVersion", "8.0.1");
+
+            modelBuilder.Entity("TekTomato.Models.PomodoroSession", b =>
+            {
+                b.Property<int>("Id")
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("INTEGER");
+
+                b.Property<int>("ActualDurationSeconds")
+                    .HasColumnType("INTEGER");
+
+                b.Property<DateTime>("CompletedAtUtc")
+                    .HasColumnType("TEXT");
+
+                b.Property<bool>("CompletedNormally")
+                    .HasDefaultValue(true)
+                    .HasColumnType("INTEGER");
+
+                b.Property<int>("OverrunSeconds")
+                    .HasDefaultValue(0)
+                    .HasColumnType("INTEGER");
+
+                b.Property<int>("PausedDurationSeconds")
+                    .HasDefaultValue(0)
+                    .HasColumnType("INTEGER");
+
+                b.Property<int>("PlannedDurationSeconds")
+                    .HasColumnType("INTEGER");
+
+                b.Property<int?>("PomodoroNumber")
+                    .HasColumnType("INTEGER");
+
+                b.Property<string>("SessionType")
+                    .IsRequired()
+                    .HasMaxLength(50)
+                    .HasColumnType("TEXT");
+
+                b.Property<DateTime>("StartedAtUtc")
+                    .IsRequired()
+                    .HasColumnType("TEXT");
+
+                b.HasKey("Id");
+
+                b.HasIndex("SessionType", "CompletedNormally")
+                    .HasDatabaseName("IX_Sessions_SessionType_CompletedNormally");
+
+                b.HasIndex("StartedAtUtc")
+                    .HasDatabaseName("IX_Sessions_StartedAtUtc");
+
+                b.ToTable("Sessions");
+            });
+
+            modelBuilder.Entity("TekTomato.Models.Setting", b =>
+            {
+                b.Property<string>("Key")
+                    .ValueGeneratedNever()
+                    .HasMaxLength(100)
+                    .HasColumnType("TEXT");
+
+                b.Property<string>("Value")
+                    .IsRequired()
+                    .HasMaxLength(500)
+                    .HasColumnType("TEXT");
+
+                b.HasKey("Key");
+
+                b.ToTable("Settings");
+            });
+#pragma warning restore 612, 618
+        }
+    }
+}
+</file>
+</file>
