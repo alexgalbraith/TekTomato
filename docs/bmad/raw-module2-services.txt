@@ -1,0 +1,1209 @@
+<file path="TekTomato/Services/TimerEngine.cs">
+using System;
+using System.Windows.Threading;
+using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.Extensions.Logging;
+using TekTomato.Services.DataAccess;
+
+namespace TekTomato.Services
+{
+    /// <summary>
+    /// Represents the type of session being tracked.
+    /// </summary>
+    public enum SessionType
+    {
+        Work,
+        ShortBreak,
+        LongBreak
+    }
+
+    /// <summary>
+    /// Represents the current state of the timer engine.
+    /// </summary>
+    public enum TimerState
+    {
+        Idle,
+        Running,
+        Paused,
+        Overrun,
+        Completed
+    }
+
+    /// <summary>
+    /// Core timer engine implementing the Pomodoro timer state machine.
+    /// Uses wall-clock timestamps for accurate time tracking across pauses.
+    /// </summary>
+    public partial class TimerEngine : ObservableObject
+    {
+        #region Private Fields
+
+        private readonly DispatcherTimer _timer;
+        private readonly SessionService _sessionService;
+        private readonly SoundService _soundService;
+        private readonly SettingsService _settingsService;
+
+        // Timing data fields
+        private DateTime _sessionStartedAtUtc;
+        private int _plannedDurationSeconds;
+        private DateTime _pauseStartedAtUtc;
+        private long _totalPausedSeconds;
+        private DateTime _completedAtUtc;
+        private DateTime _overrunPauseStartedAtUtc;
+        private long _totalOverrunPausedSeconds;
+
+        // State tracking
+        private TimerState _currentState = TimerState.Idle;
+        private SessionType _currentSessionType;
+        private int _pomodoroCountInCycle = 0;
+
+        #endregion Private Fields
+
+        #region Constructor
+
+        /// <summary>
+        /// Initialises the timer engine with required services.
+        /// </summary>
+        public TimerEngine(SessionService sessionService, SoundService soundService, SettingsService settingsService)
+        {
+            _sessionService = sessionService ?? throw new ArgumentNullException(nameof(sessionService));
+            _soundService = soundService ?? throw new ArgumentNullException(nameof(soundService));
+            _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
+
+            // Configure DispatcherTimer at 250ms intervals
+            _timer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(250)
+            };
+            _timer.Tick += OnTimerTick;
+
+            // Set initial state
+            ResetState();
+        }
+
+        #endregion Constructor
+
+        #region Properties (Observable)
+
+        /// <summary>
+        /// Gets the current state of the timer engine.
+        /// </summary>
+        public TimerState CurrentState
+        {
+            get => _currentState;
+            private set => SetProperty(ref _currentState, value);
+        }
+
+        /// <summary>
+        /// Gets or sets the formatted display text (MM:SS or -M:SS for overrun).
+        /// </summary>
+        public string DisplayText
+        {
+            get => CalculateDisplayText();
+            private set => SetProperty(ref _displayText, value);
+        }
+
+        private string _displayText;
+
+        /// <summary>
+        /// Gets the type of current session (Work, ShortBreak, LongBreak).
+        /// </summary>
+        public SessionType SessionType
+        {
+            get => _currentSessionType;
+            private set => SetProperty(ref _currentSessionType, value);
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether action buttons should be shown.
+        /// </summary>
+        public bool ShowActionButtons
+        {
+            get => _showActionButtons;
+            private set => SetProperty(ref _showActionButtons, value);
+        }
+
+        private bool _showActionButtons = true;
+
+        /// <summary>
+        /// Gets the current pomodoro count in the cycle (for work sessions).
+        /// </summary>
+        public int PomodoroCount
+        {
+            get => _pomodoroCountInCycle;
+            private set => SetProperty(ref _pomodoroCountInCycle, value);
+        }
+
+        #endregion Properties (Observable)
+
+        #region Public Methods
+
+        /// <summary>
+        /// Starts a new timer session with the specified type.
+        /// </summary>
+        /// <param name="sessionType">The type of session to start.</param>
+        public void StartSession(SessionType sessionType)
+        {
+            if (CurrentState != TimerState.Idle && CurrentState != TimerState.Completed)
+            {
+                throw new InvalidOperationException($"Cannot start session when in state: {CurrentState}");
+            }
+
+            _currentSessionType = sessionType;
+            _sessionStartedAtUtc = DateTime.UtcNow;
+            _plannedDurationSeconds = GetDurationForSessionType(sessionType);
+            _totalPausedSeconds = 0;
+            _totalOverrunPausedSeconds = 0;
+
+            if (sessionType == SessionType.Work)
+            {
+                _pomodoroCountInCycle++;
+            }
+
+            CurrentState = TimerState.Running;
+            ShowActionButtons = true;
+
+            _timer.Start();
+        }
+
+        /// <summary>
+        /// Pauses the currently running session.
+        /// </summary>
+        public void Pause()
+        {
+            if (CurrentState == TimerState.Running)
+            {
+                CurrentState = TimerState.Paused;
+                _pauseStartedAtUtc = DateTime.UtcNow;
+            }
+            else if (CurrentState == TimerState.Overrun)
+            {
+                // Pause during overrun state
+                _overrunPauseStartedAtUtc = DateTime.UtcNow;
+                // State remains Overrun but ticking stops
+                _timer.Stop();
+            }
+        }
+
+        /// <summary>
+        /// Resumes a paused session.
+        /// </summary>
+        public void Resume()
+        {
+            if (CurrentState == TimerState.Paused)
+            {
+                // Calculate paused duration and add to total
+                var now = DateTime.UtcNow;
+                _totalPausedSeconds += (now - _pauseStartedAtUtc).TotalSeconds;
+                _timer.Start();
+                CurrentState = TimerState.Running;
+            }
+            else if (CurrentState == TimerState.Overrun)
+            {
+                // Resume from paused overrun
+                var now = DateTime.UtcNow;
+                _totalOverrunPausedSeconds += (now - _overrunPauseStartedAtUtc).TotalSeconds;
+                _timer.Start();
+            }
+        }
+
+        /// <summary>
+        /// Cancels the current session and returns to idle state.
+        /// </summary>
+        public void Cancel()
+        {
+            if (CurrentState == TimerState.Running || CurrentState == TimerState.Paused ||
+                CurrentState == TimerState.Overrun || CurrentState == TimerState.Completed)
+            {
+                _timer.Stop();
+                ResetState();
+            }
+        }
+
+        #endregion Public Methods
+
+        #region Private Methods
+
+        /// <summary>
+        /// Calculates the remaining time display text based on current state and timing.
+        /// </summary>
+        /// <returns>Formatted time string (MM:SS or -M:SS for overrun).</returns>
+        private string CalculateDisplayText()
+        {
+            if (CurrentState == TimerState.Idle)
+            {
+                return "Ready";
+            }
+
+            // Calculate actual elapsed time accounting for pauses
+            var now = DateTime.UtcNow;
+            var elapsedSeconds = (now - _sessionStartedAtUtc).TotalSeconds - _totalPausedSeconds - _totalOverrunPausedSeconds;
+            var remainingSeconds = _plannedDurationSeconds - elapsedSeconds;
+
+            if (CurrentState == TimerState.Completed)
+            {
+                return "00:00";
+            }
+
+            // Format display text
+            var absoluteValue = Math.Abs((int)remainingSeconds);
+            var minutes = absoluteValue / 60;
+            var seconds = absoluteValue % 60;
+
+            if (remainingSeconds < 0 && CurrentState != TimerState.Completed)
+            {
+                return $"-{minutes}:{seconds:00}";
+            }
+
+            return $"{minutes:00}:{seconds:00}";
+        }
+
+        /// <summary>
+        /// Called on each timer tick (every 250ms).
+        /// Updates display and handles state transitions.
+        /// </summary>
+        private void OnTimerTick(object? sender, EventArgs e)
+        {
+            var now = DateTime.UtcNow;
+            var elapsedSeconds = (now - _sessionStartedAtUtc).TotalSeconds - _totalPausedSeconds - _totalOverrunPausedSeconds;
+            var remainingSeconds = _plannedDurationSeconds - elapsedSeconds;
+
+            // Trigger display update
+            OnPropertyChanged(nameof(DisplayText));
+
+            // Check for completion or overrun state transition
+            if (CurrentState == TimerState.Running && remainingSeconds <= 0)
+            {
+                // Fire sound notification
+                _soundService.PlaySelectedSound();
+
+                if (CurrentState != TimerState.Overrun)
+                {
+                    // Transition to Overrun state and continue counting into negative
+                    CurrentState = TimerState.Overrun;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Marks the session as completed and records it to the database.
+        /// </summary>
+        public void MarkAsCompleted()
+        {
+            if (CurrentState == TimerState.Running || CurrentState == TimerState.Paused)
+            {
+                _timer.Stop();
+
+                // Calculate final metrics
+                var now = DateTime.UtcNow;
+                var actualDurationSeconds = (int)(_plannedDurationSeconds - _totalPausedSeconds);
+                var overrunSeconds = 0; // No overrun in normal completion
+
+                // Record session to database asynchronously
+                _sessionService.RecordSessionAsync(CreatePomodoroSession(now, actualDurationSeconds, overrunSeconds));
+
+                CurrentState = TimerState.Completed;
+            }
+        }
+
+        /// <summary>
+        /// Resets the timer engine to initial idle state.
+        /// </summary>
+        private void ResetState()
+        {
+            _timer.Stop();
+            CurrentState = TimerState.Idle;
+            SessionType = SessionType.Work;
+            _pomodoroCountInCycle = 0;
+            ShowActionButtons = true;
+        }
+
+        /// <summary>
+        /// Gets the planned duration in seconds for a given session type from settings.
+        /// </summary>
+        private int GetDurationForSessionType(SessionType sessionType)
+        {
+            return sessionType switch
+            {
+                SessionType.Work => _settingsService.WorkDurationMinutes * 60,
+                SessionType.ShortBreak => _settingsService.ShortBreakDurationMinutes * 60,
+                SessionType.LongBreak => _settingsService.LongBreakDurationMinutes * 60,
+                _ => 25 * 60 // Fallback to 25 minutes
+            };
+        }
+
+        /// <summary>
+        /// Creates a PomodoroSession object with the calculated timing data.
+        /// </summary>
+        private Models.PomodoroSession CreatePomodoroSession(DateTime completedAt, int actualDuration, int overrun)
+        {
+            var now = DateTime.UtcNow;
+            _completedAtUtc = now;
+
+            return new Models.PomodoroSession
+            {
+                SessionType = _currentSessionType.ToString(),
+                StartedAtUtc = _sessionStartedAtUtc,
+                CompletedAtUtc = _completedAt,
+                PlannedDurationSeconds = _plannedDurationSeconds,
+                ActualDurationSeconds = actualDuration,
+                OverrunSeconds = overrun,
+                PausedDurationSeconds = (int)_totalPausedSeconds,
+                CompletedNormally = true,
+                PomodoroNumber = (_currentSessionType == SessionType.Work) ? _pomodoroCountInCycle : null
+            };
+        }
+
+        #endregion Private Methods
+    }
+}
+</file>
+
+<file path="TekTomato/Services/SettingsService.cs">
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using CommunityToolkit.Mvvm.ComponentModel;
+using TekTomato.Data;
+using TekTomato.Models;
+
+namespace TekTomato.Services
+{
+    /// <summary>
+    /// Manages application settings with database persistence and in-memory caching.
+    /// Provides strongly-typed access to configuration values.
+    /// </summary>
+    public partial class SettingsService : ObservableObject
+    {
+        #region Private Fields
+
+        private readonly TekTomatoDbContext _dbContext;
+        private Dictionary<string, string> _settingsCache = new();
+
+        // Default values as per architecture reference (Section 3)
+        private const int DEFAULT_WORK_DURATION_MINUTES = 25;
+        private const int DEFAULT_SHORT_BREAK_DURATION_MINUTES = 5;
+        private const int DEFAULT_LONG_BREAK_DURATION_MINUTES = 15;
+        private const int DEFAULT_LONG_BREAK_INTERVAL_POMODOROS = 4;
+        private const string DEFAULT_SOUND_FILE_NAME = "Windows Notify System Generic.wav";
+        private const ThemeType DEFAULT_THEME = ThemeType.SystemAuto;
+        private const int DEFAULT_BACKGROUND_OPACITY_PERCENT = 80;
+        private int? DEFAULT_OVERLAY_POSITION_X = null;
+        private int? DEFAULT_OVERLAY_POSITION_Y = null;
+
+        #endregion Private Fields
+
+        #region Constructor
+
+        /// <summary>
+        /// Initialises the settings service with database context.
+        /// </summary>
+        public SettingsService(TekTomatoDbContext dbContext)
+        {
+            _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
+        }
+
+        /// <summary>
+        /// Loads settings from database asynchronously on construction.
+        /// </summary>
+        public async Task InitializeAsync()
+        {
+            await LoadSettingsAsync();
+        }
+
+        #endregion Constructor
+
+        #region Settings Properties (Observable)
+
+        /// <summary>
+        /// Gets or sets the work duration in minutes.
+        /// </summary>
+        public int WorkDurationMinutes
+        {
+            get => GetIntSetting("WorkDurationMinutes", DEFAULT_WORK_DURATION_MINUTES);
+            set => SetSetting("WorkDurationMinutes", value.ToString());
+        }
+
+        /// <summary>
+        /// Gets or sets the short break duration in minutes.
+        /// </summary>
+        public int ShortBreakDurationMinutes
+        {
+            get => GetIntSetting("ShortBreakDurationMinutes", DEFAULT_SHORT_BREAK_DURATION_MINUTES);
+            set => SetSetting("ShortBreakDurationMinutes", value.ToString());
+        }
+
+        /// <summary>
+        /// Gets or sets the long break duration in minutes.
+        /// </summary>
+        public int LongBreakDurationMinutes
+        {
+            get => GetIntSetting("LongBreakDurationMinutes", DEFAULT_LONG_BREAK_DURATION_MINUTES);
+            set => SetSetting("LongBreakDurationMinutes", value.ToString());
+        }
+
+        /// <summary>
+        /// Gets or sets the number of pomodoros before a long break.
+        /// </summary>
+        public int LongBreakIntervalPomodoros
+        {
+            get => GetIntSetting("LongBreakIntervalPomodoros", DEFAULT_LONG_BREAK_INTERVAL_POMODOROS);
+            set => SetSetting("LongBreakIntervalPomodoros", value.ToString());
+        }
+
+        /// <summary>
+        /// Gets or sets the sound file name for timer completion.
+        /// </summary>
+        public string SoundFileName
+        {
+            get => GetStringSetting("SoundFileName", DEFAULT_SOUND_FILE_NAME);
+            set => SetSetting("SoundFileName", value);
+        }
+
+        /// <summary>
+        /// Gets or sets the application theme type.
+        /// </summary>
+        public ThemeType Theme
+        {
+            get => GetEnumSetting<ThemeType>("Theme", DEFAULT_THEME);
+            set => SetSetting("Theme", value.ToString());
+        }
+
+        /// <summary>
+        /// Gets or sets the background opacity percentage.
+        /// </summary>
+        public int BackgroundOpacityPercent
+        {
+            get => GetIntSetting("BackgroundOpacityPercent", DEFAULT_BACKGROUND_OPACITY_PERCENT);
+            set => SetSetting("BackgroundOpacityPercent", value.ToString());
+        }
+
+        /// <summary>
+        /// Gets or sets the X position for overlay window (null means auto-positioned).
+        /// </summary>
+        public int? OverlayPositionX
+        {
+            get => GetNullableIntSetting("OverlayPositionX", DEFAULT_OVERLAY_POSITION_X);
+            set => SetSetting("OverlayPositionX", value?.ToString() ?? string.Empty);
+        }
+
+        /// <summary>
+        /// Gets or sets the Y position for overlay window (null means auto-positioned).
+        /// </summary>
+        public int? OverlayPositionY
+        {
+            get => GetNullableIntSetting("OverlayPositionY", DEFAULT_OVERLAY_POSITION_Y);
+            set => SetSetting("OverlayPositionY", value?.ToString() ?? string.Empty);
+        }
+
+        #endregion Settings Properties (Observable)
+
+        #region Public Methods
+
+        /// <summary>
+        /// Saves all current settings to the database.
+        /// </summary>
+        public async Task SaveAsync()
+        {
+            foreach (var setting in GetPersistableSettings())
+            {
+                await UpsertSettingAsync(setting.Key, setting.Value);
+            }
+
+            // Refresh cache from DB to ensure consistency
+            await LoadSettingsAsync();
+        }
+
+        /// <summary>
+        /// Resets all settings to default values.
+        /// </summary>
+        public async Task ResetToDefaultsAsync()
+        {
+            // Clear existing settings in cache
+            _settingsCache.Clear();
+
+            // Set each property to its default (triggers Save via setter)
+            WorkDurationMinutes = DEFAULT_WORK_DURATION_MINUTES;
+            ShortBreakDurationMinutes = DEFAULT_SHORT_BREAK_DURATION_MINUTES;
+            LongBreakDurationMinutes = DEFAULT_LONG_BREAK_DURATION_MINUTES;
+            LongBreakIntervalPomodoros = DEFAULT_LONG_BREAK_INTERVAL_POMODOROS;
+            SoundFileName = DEFAULT_SOUND_FILE_NAME;
+            Theme = DEFAULT_THEME;
+            BackgroundOpacityPercent = DEFAULT_BACKGROUND_OPACITY_PERCENT;
+            OverlayPositionX = DEFAULT_OVERLAY_POSITION_X;
+            OverlayPositionY = DEFAULT_OVERLAY_POSITION_Y;
+
+            await SaveAsync();
+        }
+
+        #endregion Public Methods
+
+        #region Private Methods
+
+        /// <summary>
+        /// Loads all settings from the database into memory cache.
+        /// </summary>
+        private async Task LoadSettingsAsync()
+        {
+            try
+            {
+                var settings = await _dbContext.Settings.ToListAsync();
+                
+                // Clear and rebuild cache
+                _settingsCache.Clear();
+                
+                foreach (var setting in settings)
+                {
+                    if (!string.IsNullOrEmpty(setting.Key))
+                    {
+                        _settingsCache[setting.Key] = setting.Value;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't crash - use defaults instead
+                System.Diagnostics.Debug.WriteLine($"Error loading settings: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Gets a string setting from cache with fallback to default.
+        /// </summary>
+        private string GetStringSetting(string key, string defaultValue)
+        {
+            return _settingsCache.TryGetValue(key, out var value) && !string.IsNullOrEmpty(value) 
+                ? value 
+                : defaultValue;
+        }
+
+        /// <summary>
+        /// Gets an integer setting from cache with fallback to default.
+        /// </summary>
+        private int GetIntSetting(string key, int defaultValue)
+        {
+            if (_settingsCache.TryGetValue(key, out var value) && !string.IsNullOrEmpty(value))
+            {
+                return int.TryParse(value, out var result) ? result : defaultValue;
+            }
+
+            return defaultValue;
+        }
+
+        /// <summary>
+        /// Gets a nullable integer setting from cache with fallback to default.
+        /// </summary>
+        private int? GetNullableIntSetting(string key, int? defaultValue)
+        {
+            if (_settingsCache.TryGetValue(key, out var value) && !string.IsNullOrEmpty(value))
+            {
+                return int.TryParse(value, out var result) ? (int?)result : defaultValue;
+            }
+
+            return defaultValue;
+        }
+
+        /// <summary>
+        /// Gets an enum setting from cache with fallback to default.
+        /// </summary>
+        private T GetEnumSetting<T>(string key, T defaultValue) where T : Enum
+        {
+            if (_settingsCache.TryGetValue(key, out var value) && !string.IsNullOrEmpty(value))
+            {
+                return Enum.TryParse<T>(value, out var result) ? result : defaultValue;
+            }
+
+            return defaultValue;
+        }
+
+        /// <summary>
+        /// Sets a setting value in cache and triggers property change notification.
+        /// </summary>
+        private void SetSetting(string key, string value)
+        {
+            var oldValue = _settingsCache.TryGetValue(key, out var existingValue) ? existingValue : null;
+            _settingsCache[key] = value;
+
+            // Notify UI that settings may have changed (all properties depend on cache)
+            OnPropertyChanged(nameof(WorkDurationMinutes));
+            OnPropertyChanged(nameof(ShortBreakDurationMinutes));
+            OnPropertyChanged(nameof(LongBreakDurationMinutes));
+            OnPropertyChanged(nameof(LongBreakIntervalPomodoros));
+            OnPropertyChanged(nameof(SoundFileName));
+            OnPropertyChanged(nameof(Theme));
+            OnPropertyChanged(nameof(BackgroundOpacityPercent));
+            OnPropertyChanged(nameof(OverlayPositionX));
+            OnPropertyChanged(nameof(OverlayPositionY));
+        }
+
+        /// <summary>
+        /// Upserts a setting record in the database.
+        /// </summary>
+        private async Task UpsertSettingAsync(string key, string value)
+        {
+            var existing = await _dbContext.Settings.FindAsync(key);
+
+            if (existing != null)
+            {
+                existing.Value = value;
+                _dbContext.Settings.Update(existing);
+            }
+            else
+            {
+                var newSetting = new Setting { Key = key, Value = value };
+                _dbContext.Settings.Add(newSetting);
+            }
+
+            await _dbContext.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// Gets all settings that should be persisted to database.
+        /// </summary>
+        private List<(string Key, string Value)> GetPersistableSettings()
+        {
+            var persistable = new List<(string Key, string Value)>
+            {
+                ("WorkDurationMinutes", WorkDurationMinutes.ToString()),
+                ("ShortBreakDurationMinutes", ShortBreakDurationMinutes.ToString()),
+                ("LongBreakDurationMinutes", LongBreakDurationMinutes.ToString()),
+                ("LongBreakIntervalPomodoros", LongBreakIntervalPomodoros.ToString()),
+                ("SoundFileName", SoundFileName),
+                ("Theme", Theme.ToString()),
+                ("BackgroundOpacityPercent", BackgroundOpacityPercent.ToString()),
+                ("OverlayPositionX", OverlayPositionX?.ToString() ?? string.Empty),
+                ("OverlayPositionY", OverlayPositionY?.ToString() ?? string.Empty)
+            };
+
+            return persistable;
+        }
+
+        #endregion Private Methods
+    }
+}
+</file>
+
+<file path="TekTomato/Services/SoundService.cs">
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Media;
+using System.Threading.Tasks;
+
+namespace TekTomato.Services
+{
+    /// <summary>
+    /// Handles sound playback and available sound file enumeration.
+    /// </summary>
+    public class SoundService
+    {
+        #region Private Fields
+
+        private readonly string _windowsMediaPath;
+        private readonly SettingsService _settingsService;
+
+        #endregion Private Fields
+
+        #region Constructor
+
+        /// <summary>
+        /// Initialises the sound service with settings dependency.
+        /// </summary>
+        public SoundService(SettingsService settingsService)
+        {
+            _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
+            
+            // Default Windows media path
+            _windowsMediaPath = @"C:\Windows\Media\";
+        }
+
+        #endregion Constructor
+
+        #region Public Methods
+
+        /// <summary>
+        /// Gets all available .wav files from the Windows Media directory.
+        /// </summary>
+        /// <returns>Enumeration of sound file names (filenames only, not paths).</returns>
+        public IEnumerable<string> GetAvailableSounds()
+        {
+            var sounds = new List<string>();
+
+            try
+            {
+                if (Directory.Exists(_windowsMediaPath))
+                {
+                    var wavFiles = Directory.GetFiles(_windowsMediaPath, "*.wav", SearchOption.TopDirectoryOnly);
+                    
+                    foreach (var file in wavFiles)
+                    {
+                        sounds.Add(Path.GetFileName(file));
+                    }
+                }
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // Handle access denied gracefully - return empty list
+                System.Diagnostics.Debug.WriteLine("Access denied to Windows Media folder");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error enumerating sounds: {ex.Message}");
+            }
+
+            return sounds;
+        }
+
+        /// <summary>
+        /// Plays the currently selected sound file with fallback to system beep.
+        /// </summary>
+        public async Task PlaySelectedSound()
+        {
+            var fileName = _settingsService.SoundFileName;
+            
+            if (string.IsNullOrEmpty(fileName))
+            {
+                // No sound configured - play default system beep
+                SystemSounds.Beep.Play();
+                return;
+            }
+
+            // Reconstruct full path from filename only
+            var fullPath = Path.Combine(_windowsMediaPath, fileName);
+
+            try
+            {
+                if (File.Exists(fullPath))
+                {
+                    await PlaySoundFileAsync(fullPath);
+                }
+                else
+                {
+                    // File not found - fallback to system beep
+                    SystemSounds.Beep.Play();
+                }
+            }
+            catch (Exception ex)
+            {
+                // Error playing sound - fallback to system beep
+                System.Diagnostics.Debug.WriteLine($"Error playing sound: {ex.Message}");
+                try
+                {
+                    SystemSounds.Beep.Play();
+                }
+                catch
+                {
+                    // Ignore final error - no sound will play
+                }
+            }
+        }
+
+        #endregion Public Methods
+
+        #region Private Methods
+
+        /// <summary>
+        /// Plays a WAV file asynchronously using SoundPlayer.
+        /// Creates new instance per play to avoid issues with overlapping playback.
+        /// </summary>
+        private async Task PlaySoundFileAsync(string fullPath)
+        {
+            // Create new SoundPlayer instance for each play (as per architecture reference)
+            var soundPlayer = new SoundPlayer(fullPath);
+
+            // Use LoadAsync + Play on completion pattern
+            await soundPlayer.LoadAsync();
+            
+            try
+            {
+                // Wait for the LoadCompleted event and then play
+                await Task.Run(() => soundPlayer.Play());
+                
+                // Give it time to start before potentially disposing
+                System.Threading.Thread.Sleep(100);
+            }
+            finally
+            {
+                // Dispose the sound player after use
+                soundPlayer.Dispose();
+            }
+        }
+
+        #endregion Private Methods
+    }
+}
+</file>
+
+<file path="TekTomato/Services/SessionService.cs">
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using TekTomato.Data;
+using TekTomato.Models;
+
+namespace TekTomato.Services
+{
+    /// <summary>
+    /// Handles session recording and statistical queries for pomodoro data.
+    /// </summary>
+    public class SessionService
+    {
+        #region Private Fields
+
+        private readonly TekTomatoDbContext _dbContext;
+
+        #endregion Private Fields
+
+        #region Constructor
+
+        /// <summary>
+        /// Initialises the session service with database context.
+        /// </summary>
+        public SessionService(TekTomatoDbContext dbContext)
+        {
+            _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
+        }
+
+        #endregion Constructor
+
+        #region Public Methods
+
+        /// <summary>
+        /// Records a completed pomodoro session asynchronously.
+        /// </summary>
+        /// <param name="session">The session to record.</param>
+        public async Task RecordSessionAsync(PomodoroSession session)
+        {
+            if (session == null)
+            {
+                throw new ArgumentNullException(nameof(session));
+            }
+
+            _dbContext.Sessions.Add(session);
+            await _dbContext.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// Gets the count of completed pomodoro sessions per day within a date range.
+        /// Only counts Work sessions that completed normally.
+        /// </summary>
+        /// <param name="from">Start date (inclusive). Null means no lower bound.</param>
+        /// <param name="to">End date (inclusive). Null means no upper bound.</param>
+        /// <returns>Dictionary mapping DateOnly to pomodoro count for each day with activity.</returns>
+        public async Task<Dictionary<DateOnly, int>> GetDailyPomodoroCounts(DateOnly? from = null, DateOnly? to = null)
+        {
+            var query = _dbContext.Sessions
+                .Where(s => s.SessionType == "Work" && s.CompletedNormally);
+
+            // Apply date filters
+            if (from.HasValue)
+            {
+                query = query.Where(s => s.StartedAtUtc.Date >= from.Value.ToDateTime(TimeOnly.MinValue));
+            }
+
+            if (to.HasValue)
+            {
+                query = query.Where(s => s.StartedAtUtc.Date <= to.Value.ToDateTime(TimeOnly.MaxValue));
+            }
+
+            var sessions = await query.ToListAsync();
+
+            // Group by date and count
+            return sessions
+                .GroupBy(s => DateOnly.FromDateTime(s.StartedAtUtc))
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.Count()
+                );
+        }
+
+        /// <summary>
+        /// Gets the total focus minutes per day within a date range.
+        /// Only counts Work sessions that completed normally.
+        /// </summary>
+        /// <param name="from">Start date (inclusive). Null means no lower bound.</param>
+        /// <param name="to">End date (inclusive). Null means no upper bound.</param>
+        /// <returns>List of (Date, minutes) tuples for each day with focus activity.</returns>
+        public async Task<List<(DateOnly date, double minutes)>> GetDailyFocusMinutes(DateOnly? from = null, DateOnly? to = null)
+        {
+            var query = _dbContext.Sessions
+                .Where(s => s.SessionType == "Work" && s.CompletedNormally);
+
+            // Apply date filters
+            if (from.HasValue)
+            {
+                query = query.Where(s => s.StartedAtUtc.Date >= from.Value.ToDateTime(TimeOnly.MinValue));
+            }
+
+            if (to.HasValue)
+            {
+                query = query.Where(s => s.StartedAtUtc.Date <= to.Value.ToDateTime(TimeOnly.MaxValue));
+            }
+
+            var sessions = await query.ToListAsync();
+
+            // Group by date and sum actual duration
+            return sessions
+                .GroupBy(s => DateOnly.FromDateTime(s.StartedAtUtc))
+                .Select(g => (
+                    date: g.Key,
+                    minutes: g.Sum(s => s.ActualDurationSeconds) / 60.0
+                ))
+                .OrderBy(x => x.date)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Gets the total focus minutes per week within a date range.
+        /// Groups by ISO week starting Monday. Only counts Work sessions that completed normally.
+        /// </summary>
+        /// <param name="from">Start date (inclusive). Null means no lower bound.</param>
+        /// <param name="to">End date (inclusive). Null means no upper bound.</param>
+        /// <returns>List of (WeekStart, minutes) tuples for each week with focus activity.</returns>
+        public async Task<List<(DateOnly weekStart, double minutes)>> GetWeeklyFocusMinutes(DateOnly? from = null, DateOnly? to = null)
+        {
+            var query = _dbContext.Sessions
+                .Where(s => s.SessionType == "Work" && s.CompletedNormally);
+
+            // Apply date filters
+            if (from.HasValue)
+            {
+                query = query.Where(s => s.StartedAtUtc.Date >= from.Value.ToDateTime(TimeOnly.MinValue));
+            }
+
+            if (to.HasValue)
+            {
+                query = query.Where(s => s.StartedAtUtc.Date <= to.Value.ToDateTime(TimeOnly.MaxValue));
+            }
+
+            var sessions = await query.ToListAsync();
+
+            // Group by week start (Monday) and sum actual duration
+            return sessions
+                .GroupBy(s => GetWeekStart(DateOnly.FromDateTime(s.StartedAtUtc)))
+                .Select(g => (
+                    weekStart: g.Key,
+                    minutes: g.Sum(s => s.ActualDurationSeconds) / 60.0
+                ))
+                .OrderBy(x => x.weekStart)
+                .ToList();
+        }
+
+        #endregion Public Methods
+
+        #region Private Methods
+
+        /// <summary>
+        /// Gets the Monday of the week containing the given date.
+        /// </summary>
+        private static DateOnly GetWeekStart(DateOnly date)
+        {
+            // Get days since Monday (0=Monday, 1=Tuesday, etc.)
+            var dayOfWeek = date.DayOfWeek;
+            var daysSinceMonday = (int)dayOfWeek == DayOfWeek.Monday 
+                ? 0 
+                : (7 + (int)dayOfWeek - 1) % 7;
+
+            return date.AddDays(-daysSinceMonday);
+        }
+
+        #endregion Private Methods
+    }
+}
+</file>
+
+<file path="TekTomato/Services/ThemeService.cs">
+using System;
+using Microsoft.Win32;
+using System.Windows;
+using TekTomato.ViewModels;
+
+namespace TekTomato.Services
+{
+    /// <summary>
+    /// Represents the application theme type.
+    /// </summary>
+    public enum ThemeType
+    {
+        Dark,
+        Light,
+        SystemAuto
+    }
+
+    /// <summary>
+    /// Manages theme switching and system auto-detection for light/dark mode.
+    /// </summary>
+    public class ThemeService
+    {
+        #region Private Fields
+
+        private readonly SettingsService _settingsService;
+        private ThemeType _currentTheme = ThemeType.SystemAuto;
+
+        #endregion Private Fields
+
+        #region Properties
+
+        /// <summary>
+        /// Gets or sets the current theme type.
+        /// </summary>
+        public ThemeType CurrentTheme
+        {
+            get => _currentTheme;
+            private set => _currentTheme = value;
+        }
+
+        #endregion Properties
+
+        #region Constructor
+
+        /// <summary>
+        /// Initialises the theme service with settings dependency.
+        /// </summary>
+        public ThemeService(SettingsService settingsService)
+        {
+            _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
+            
+            // Apply initial theme from settings
+            CurrentTheme = _settingsService.Theme;
+        }
+
+        #endregion Constructor
+
+        #region Public Methods
+
+        /// <summary>
+        /// Applies the specified theme to the application.
+        /// Handles SystemAuto detection and swaps resource dictionaries.
+        /// </summary>
+        /// <param name="themeType">The theme type to apply.</param>
+        public void ApplyTheme(ThemeType themeType)
+        {
+            CurrentTheme = themeType;
+
+            // Determine actual theme based on system settings if SystemAuto
+            var actualThemePath = GetThemeResourcePath(themeType);
+            
+            // Swap resource dictionaries in Application.Resources.MergedDictionaries
+            SwapResourceDictionaries(actualThemePath);
+
+            // Persist to settings
+            _settingsService.Theme = themeType;
+        }
+
+        /// <summary>
+        /// Applies the current theme from settings (convenience method).
+        /// </summary>
+        public void ApplyCurrentTheme()
+        {
+            var themeType = _settingsService.Theme;
+            CurrentTheme = themeType;
+            
+            // Determine actual theme based on system settings if SystemAuto
+            var actualThemePath = GetThemeResourcePath(themeType);
+            
+            // Swap resource dictionaries in Application.Resources.MergedDictionaries
+            SwapResourceDictionaries(actualThemePath);
+        }
+
+        #endregion Public Methods
+
+        #region Private Methods
+
+        /// <summary>
+        /// Gets the resource dictionary path for a given theme type.
+        /// Handles SystemAuto detection by reading Windows registry.
+        /// </summary>
+        private string GetThemeResourcePath(ThemeType themeType)
+        {
+            if (themeType == ThemeType.SystemAuto)
+            {
+                // Detect system theme preference via registry
+                var isLight = IsSystemUsingLightTheme();
+                
+                return isLight 
+                    ? "Resources/Themes/Light.xaml" 
+                    : "Resources/Themes/Dark.xaml";
+            }
+
+            return themeType == ThemeType.Light 
+                ? "Resources/Themes/Light.xaml" 
+                : "Resources/Themes/Dark.xaml";
+        }
+
+        /// <summary>
+        /// Detects if the system is currently using light theme by reading Windows registry.
+        /// Reads HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\AppsUseLightTheme
+        /// </summary>
+        private bool IsSystemUsingLightTheme()
+        {
+            try
+            {
+                using var key = Registry.CurrentUser.OpenSubKey(
+                    @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", false);
+
+                if (key != null)
+                {
+                    var value = key.GetValue("AppsUseLightTheme");
+                    
+                    // AppsUseLightTheme: 1 = Light theme, 0 = Dark theme
+                    return value is int intValue && intValue == 1;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error detecting system theme: {ex.Message}");
+            }
+
+            // Default to dark if detection fails
+            return false;
+        }
+
+        /// <summary>
+        /// Swaps the theme resource dictionaries in the application resources.
+        /// Removes existing theme dictionary and adds the new one.
+        /// </summary>
+        private void SwapResourceDictionaries(string themePath)
+        {
+            var app = Application.Current;
+            if (app == null || app.Resources.MergedDictionaries == null)
+            {
+                System.Diagnostics.Debug.WriteLine("Application or MergedDictionaries is null - cannot swap theme");
+                return;
+            }
+
+            // Remove existing theme dictionaries (Dark.xaml and Light.xaml, but keep Common.xaml)
+            var mergedDictionaries = app.Resources.MergedDictionaries;
+            
+            for (int i = mergedDictionaries.Count - 1; i >= 0; i--)
+            {
+                var source = mergedDictionaries[i].Source;
+                
+                if (!string.IsNullOrEmpty(source.OriginalString))
+                {
+                    var originalPath = source.OriginalString;
+                    
+                    // Keep Common.xaml, remove theme-specific dictionaries
+                    if (originalPath.Contains("Themes/Dark.xaml") || 
+                        originalPath.Contains("Themes/Light.xaml"))
+                    {
+                        mergedDictionaries.RemoveAt(i);
+                    }
+                }
+            }
+
+            // Add the new theme dictionary
+            var newThemeDictionary = new ResourceDictionary
+            {
+                Source = new Uri(themePath, UriKind.Relative)
+            };
+
+            mergedDictionaries.Add(newThemeDictionary);
+        }
+
+        #endregion Private Methods
+    }
+}
+</file>
